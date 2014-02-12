@@ -13,6 +13,13 @@ include_directories(
 )
 add_definitions("-Wall -Wextra -O2 -fPIC")
 
+# Default to use the old YAML-CPP API
+set(USE_OLD_YAML_CPP_API TRUE CACHE BOOL "Use the old YAML-CPP API")
+if(USE_OLD_YAML_CPP_API)
+  message(STATUS "${PROJECT_NAME}: Using old YAML-CPP API")
+  add_definitions( -DUSE_OLD_YAML_CPP_API )
+endif(USE_OLD_YAML_CPP_API)
+
 if(APPLE)
   set(SO_EXT ".dylib")
   set(VICON_SDK_DIR "${CMAKE_CURRENT_LIST_DIR}/vicon_sdk/MacOSX")
