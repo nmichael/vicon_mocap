@@ -1,4 +1,4 @@
-# Vicon Driver (forked from https://github.com/kartikmohta/vicon)
+## Vicon Driver (forked from [@kartikmohta](https://github.com/kartikmohta/vicon))
 
 The driver consists of 2 parts:
 
@@ -9,17 +9,17 @@ The libvicon\_driver design is intended to provide flexibility in terms of suppo
 
 There is also an implementation of loading/storing calib (zero pose) files in YAML format using libyaml-cpp (see ViconCalib.h). Loading calib files automatically is implemented in both the interface layes (IPC & ROS) but the ROS interface layer also provides a service which you can call to set the zero pose and automatically save it in the calib file.
 
-## Installation
+### Installation
 
-### Prerequisites:
+#### Prerequisites:
 
-- Install ROS (hydro+) [link](http://wiki.ros.org/hydro/Installation/)
-- (optional) Install IPC (v.3.9.1+) [link](http://www.cs.cmu.edu/~ipc/)
+* Install ROS (hydro+) [link](http://wiki.ros.org/hydro/Installation/)
+* (optional) Install IPC (v.3.9.1+) [link](http://www.cs.cmu.edu/~ipc/)
 
-* Assuming a [dry](http://wiki.ros.org/catkin/migrating_from_rosbuild) workspace:
+Assuming a [dry](http://wiki.ros.org/catkin/migrating_from_rosbuild) workspace:
 ```sh
 cd ~/ws/dry
-wstool set -t src vicon_mocap https://github.com/nmichael/vicon.git --git --version=develop
+wstool set -t src vicon_mocap https://github.com/nmichael/vicon_mocap.git --git --version=develop
 wstool update -t src vicon_mocap
 catkin_make_isolated --install --pkg vicon_mocap
 ```
