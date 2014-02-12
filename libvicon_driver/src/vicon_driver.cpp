@@ -4,6 +4,11 @@
 #include <unistd.h>
 #include "Client.h"
 
+#ifdef __MACH__
+#include <mach/clock.h>
+#include <mach/mach.h>
+#endif
+
 namespace ViconSDK = ViconDataStreamSDK::CPP;
 
 ViconDriver::ViconDriver() :
@@ -151,7 +156,17 @@ void *ViconDriver::grabThread(void *arg)
   while(vd->grab_frames_)
   {
     result = vd->client_->GetFrame().Result;
+#ifdef __MACH__ // OSX fix: http://stackoverflow.com/a/6725161/3005110
+    clock_serv_t cclock;
+    mach_timespec_t mts;
+    host_get_clock_service(mach_host_self(), CALENDAR_CLOCK, &cclock);
+    clock_get_time(cclock, &mts);
+    mach_port_deallocate(mach_task_self(), cclock);
+    ts_now.tv_sec = mts.tv_sec;
+    ts_now.tv_nsec = mts.tv_nsec;
+#else
     clock_gettime(CLOCK_REALTIME, &ts_now);
+#endif
     if(result != ViconSDK::Result::Success)
       continue;
 

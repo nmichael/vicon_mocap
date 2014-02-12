@@ -20,16 +20,22 @@ namespace ViconCalib
 
     bool ret = false;
 
+    YAML::Node doc;
+
     try
     {
+#ifdef USE_OLD_YAML_CPP_API
       YAML::Parser parser(fin);
-      YAML::Node doc;
       parser.GetNextDocument(doc);
+#else
+      doc = YAML::Load(fin);
+#endif
 
       try
       {
         Eigen::Vector3d v;
         Eigen::Quaterniond q;
+#ifdef USE_OLD_YAML_CPP_API
         doc["translation"]["x"] >> v(0);
         doc["translation"]["y"] >> v(1);
         doc["translation"]["z"] >> v(2);
@@ -37,6 +43,15 @@ namespace ViconCalib
         doc["rotation"]["y"] >> q.y();
         doc["rotation"]["z"] >> q.z();
         doc["rotation"]["w"] >> q.w();
+#else
+        v(0) = doc["translation"]["x"].as<double>();
+        v(1) = doc["translation"]["y"].as<double>();
+        v(2) = doc["translation"]["z"].as<double>();
+        q.x() = doc["rotation"]["x"].as<double>();
+        q.y() = doc["rotation"]["y"].as<double>();
+        q.z() = doc["rotation"]["z"].as<double>();
+        q.w() = doc["rotation"]["w"].as<double>();
+#endif
         zero_pose.translate(v);
         zero_pose.rotate(q);
         ret = true;
@@ -176,11 +191,16 @@ namespace ViconCalib
 
     bool ret = false;
 
+    YAML::Node doc;
+
     try
     {
+#ifdef USE_OLD_YAML_CPP_API
       YAML::Parser parser(fin);
-      YAML::Node doc;
       parser.GetNextDocument(doc);
+#else
+      doc = YAML::Load(fin);
+#endif
 
       try
       {
@@ -189,12 +209,22 @@ namespace ViconCalib
         for(unsigned int i = 0; i < markers.size(); i++)
         {
           std::string name;
+#ifdef USE_OLD_YAML_CPP_API
           markers[i]["name"] >> name;
+#else
+          name = markers[i]["name"].as<std::string>();
+#endif
           const YAML::Node &pos = markers[i]["position"];
           Eigen::Vector3d position;
+#ifdef USE_OLD_YAML_CPP_API
           pos[0] >> position.x();
           pos[1] >> position.y();
           pos[2] >> position.z();
+#else
+          position.x() = pos[0].as<double>();
+          position.y() = pos[1].as<double>();
+          position.z() = pos[2].as<double>();
+#endif
           marker_pos_map.insert(std::make_pair<std::string, Eigen::Vector3d>(
                   name, position));
         }
@@ -222,4 +252,3 @@ namespace ViconCalib
     return ret;
   }
 }
-
