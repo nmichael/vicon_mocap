@@ -51,3 +51,6 @@ target_link_libraries(vicon_driver
   yaml-cpp
   ViconDataStreamSDK_CPP
 )
+
+install(TARGETS vicon_driver DESTINATION lib)
+install(FILES "${VICON_SDK_DIR}/libViconDataStreamSDK_CPP${SO_EXT}" DESTINATION lib)
