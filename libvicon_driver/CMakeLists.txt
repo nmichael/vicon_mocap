@@ -25,7 +25,7 @@ if(APPLE)
   set(VICON_SDK_DIR "${CMAKE_CURRENT_LIST_DIR}/vicon_sdk/MacOSX")
 else(APPLE)
   set(SO_EXT ".so")
-  list(APPEND CMAKE_SHARED_LINKER_FLAGS "-Wl,-O1 -Wl,--as-needed")
+  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-O1 -Wl,--as-needed")
 
   if(CMAKE_SIZEOF_VOID_P MATCHES 8)
     set(VICON_SDK_DIR "${CMAKE_CURRENT_LIST_DIR}/vicon_sdk/Linux64")
