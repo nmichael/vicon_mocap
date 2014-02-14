@@ -7,11 +7,12 @@ find_package(Eigen3 REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   vicon
+  tf2_ros
 )
 
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS roscpp vicon
+  CATKIN_DEPENDS roscpp vicon tf2_ros
   DEPENDS Eigen3
 )
 

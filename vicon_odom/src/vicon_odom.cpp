@@ -1,12 +1,14 @@
 #include <ros/ros.h>
 #include <nav_msgs/Odometry.h>
 #include <vicon/Subject.h>
-#include "vicon_odom/filter.h"
+#include <vicon_odom/filter.h>
 #include <Eigen/Geometry>
+#include <tf2_ros/transform_broadcaster.h>
 
 static ros::Publisher odom_pub;
 static KalmanFilter kf;
 static nav_msgs::Odometry odom_msg;
+static tf2_ros::TransformBroadcaster tfb;
 
 static void vicon_callback(const vicon::Subject::ConstPtr &msg)
 {
@@ -68,6 +70,18 @@ static void vicon_callback(const vicon::Subject::ConstPtr &msg)
   R_prev = R;
 
   odom_pub.publish(odom_msg);
+
+  geometry_msgs::TransformStamped ts;
+  ts.transform.translation.x = odom_msg.pose.pose.position.x;
+  ts.transform.translation.y = odom_msg.pose.pose.position.y;
+  ts.transform.translation.z = odom_msg.pose.pose.position.z;
+  ts.transform.rotation.x = odom_msg.pose.pose.orientation.x;
+  ts.transform.rotation.y = odom_msg.pose.pose.orientation.y;
+  ts.transform.rotation.z = odom_msg.pose.pose.orientation.z;
+  ts.transform.rotation.w = odom_msg.pose.pose.orientation.w;
+  ts.header = odom_msg.header;
+  ts.child_frame_id = odom_msg.child_frame_id;
+  tfb.sendTransform(ts);
 }
 
 int main(int argc, char **argv)
