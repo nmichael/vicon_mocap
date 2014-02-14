@@ -8,7 +8,7 @@
 static ros::Publisher odom_pub;
 static KalmanFilter kf;
 static nav_msgs::Odometry odom_msg;
-static tf2_ros::TransformBroadcaster tfb;
+static tf2_ros::TransformBroadcaster* tfb;
 
 static void vicon_callback(const vicon::Subject::ConstPtr &msg)
 {
@@ -81,7 +81,7 @@ static void vicon_callback(const vicon::Subject::ConstPtr &msg)
   ts.transform.rotation.w = odom_msg.pose.pose.orientation.w;
   ts.header = odom_msg.header;
   ts.child_frame_id = odom_msg.child_frame_id;
-  tfb.sendTransform(ts);
+  tfb->sendTransform(ts);
 }
 
 int main(int argc, char **argv)
@@ -89,6 +89,8 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "vicon_odom");
 
   ros::NodeHandle n("~");
+
+  tfb = new tf2_ros::TransformBroadcaster();
 
   double max_accel;
   n.param("max_accel", max_accel, 5.0);

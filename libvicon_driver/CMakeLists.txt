@@ -58,3 +58,7 @@ target_link_libraries(vicon_driver
 
 install(TARGETS vicon_driver DESTINATION lib)
 install(FILES "${VICON_SDK_DIR}/libViconDataStreamSDK_CPP${SO_EXT}" DESTINATION lib)
+
+if(APPLE)
+  install(FILES "${VICON_SDK_DIR}/libDebugServices${SO_EXT}" DESTINATION lib)
+endif(APPLE)
