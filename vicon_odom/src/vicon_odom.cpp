@@ -10,6 +10,9 @@ static KalmanFilter kf;
 static nav_msgs::Odometry odom_msg;
 static tf2_ros::TransformBroadcaster* tfb;
 
+static std::string fixed_frame_id;
+static std::string base_frame_id;
+
 static void vicon_callback(const vicon::Subject::ConstPtr &msg)
 {
   static ros::Time t_last_proc = msg->header.stamp;
@@ -33,8 +36,8 @@ static void vicon_callback(const vicon::Subject::ConstPtr &msg)
 
   odom_msg.header.seq = msg->header.seq;
   odom_msg.header.stamp = msg->header.stamp;
-  odom_msg.header.frame_id = msg->header.frame_id;
-  odom_msg.child_frame_id = msg->name;
+  odom_msg.header.frame_id = fixed_frame_id;
+  odom_msg.child_frame_id = base_frame_id;
   odom_msg.pose.pose.position.x = state(0);
   odom_msg.pose.pose.position.y = state(1);
   odom_msg.pose.pose.position.z = state(2);
@@ -91,6 +94,20 @@ int main(int argc, char **argv)
   ros::NodeHandle n("~");
 
   tfb = new tf2_ros::TransformBroadcaster();
+
+  if (!n.hasParam("frame_id/fixed"))
+  {
+    ROS_ERROR("vicon_odom: failed to find param 'frame_id/fixed'");
+    return EXIT_FAILURE;
+  }
+  n.getParam("frame_id/fixed", fixed_frame_id);
+
+  if (!n.hasParam("frame_id/base"))
+  {
+    ROS_ERROR("vicon_odom: failed to find param 'frame_id/fixed'");
+    return EXIT_FAILURE;
+  }
+  n.getParam("frame_id/base", base_frame_id);
 
   double max_accel;
   n.param("max_accel", max_accel, 5.0);
