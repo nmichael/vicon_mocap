@@ -21,7 +21,7 @@ if(APPLE)
   set(VICON_SDK_DIR "${CMAKE_CURRENT_LIST_DIR}/vicon_sdk/MacOSX")
 else(APPLE)
   # Default to use the old YAML-CPP API
-  set(USE_OLD_YAML_CPP_API TRUE CACHE BOOL "Use the old YAML-CPP API")
+  set(USE_OLD_YAML_CPP_API FALSE CACHE BOOL "Use the old YAML-CPP API")
 
   set(SO_EXT ".so")
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-O1 -Wl,--as-needed")
