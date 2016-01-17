@@ -13,12 +13,51 @@ static tf2_ros::TransformBroadcaster* tfb;
 static std::string fixed_frame_id;
 static std::string base_frame_id;
 
+static KalmanFilter::State_t proc_noise_diag;
+static KalmanFilter::Measurement_t meas_noise_diag;
+static unsigned int consecutive_occlusions;
+static unsigned int min_consec_occ;
+static unsigned int min_visible_markers;
+
 static void vicon_callback(const vicon::Subject::ConstPtr &msg)
 {
   static ros::Time t_last_proc = msg->header.stamp;
 
   double dt = (msg->header.stamp - t_last_proc).toSec();
   t_last_proc = msg->header.stamp;
+
+  unsigned int num_visible_markers = 0;
+  unsigned int total_num_markers = msg->markers.size();
+  for (unsigned int i = 0; i < total_num_markers; i++)
+  {
+    if (!msg->markers[i].occluded)
+      num_visible_markers++;
+  }
+
+  if (num_visible_markers < min_visible_markers)
+  {
+    //ROS_WARN("vicon_odom: less than 4 visible markers, skipping KF update");
+    consecutive_occlusions++;
+    return;
+  }
+
+  if (consecutive_occlusions > min_consec_occ)
+  {
+    KalmanFilter::State_t newstate;
+    newstate(0) = msg->position.x;
+    newstate(1) = msg->position.y;
+    newstate(2) = msg->position.z;
+    newstate(3) = 0.0;
+    newstate(4) = 0.0;
+    newstate(5) = 0.0;
+
+    kf.initialize(newstate,
+                  0.01*KalmanFilter::ProcessCov_t::Identity(),
+                  proc_noise_diag.asDiagonal(),
+                  meas_noise_diag.asDiagonal());
+    consecutive_occlusions = 0;
+    //ROS_WARN("vicon_odom: re-initialize KF position to vicon marker centroid");
+  }
 
   // Kalman filter for getting translational velocity from position measurements
   kf.processUpdate(dt);
@@ -104,10 +143,27 @@ int main(int argc, char **argv)
 
   if (!n.hasParam("frame_id/base"))
   {
-    ROS_ERROR("vicon_odom: failed to find param 'frame_id/fixed'");
+    ROS_ERROR("vicon_odom: failed to find param 'frame_id/base'");
     return EXIT_FAILURE;
   }
   n.getParam("frame_id/base", base_frame_id);
+
+  if (!n.hasParam("vicon_kf/min_consecutive_occlusions_for_restart"))
+  {
+    ROS_ERROR("vicon_odom: failed to find param 'vicon_kf/min_consecutive_occlusions_for_restart'");
+    return EXIT_FAILURE;
+  }
+  int tmp;
+  n.getParam("vicon_kf/min_consecutive_occlusions_for_restart", tmp);
+  min_consec_occ = static_cast<unsigned int>(tmp);
+
+  if (!n.hasParam("vicon_kf/min_visible_markers"))
+  {
+    ROS_ERROR("vicon_odom: failed to find param 'vicon_kf/min_visible_markers'");
+    return EXIT_FAILURE;
+  }
+  n.getParam("vicon_kf/min_visible_markers", tmp);
+  min_visible_markers = static_cast<unsigned int>(tmp);
 
   double max_accel;
   n.param("max_accel", max_accel, 5.0);
@@ -117,7 +173,6 @@ int main(int argc, char **argv)
   ROS_ASSERT(vicon_fps > 0.0);
   dt = 1/vicon_fps;
 
-  KalmanFilter::State_t proc_noise_diag;
   proc_noise_diag(0) = 0.5*max_accel*dt*dt;
   proc_noise_diag(1) = 0.5*max_accel*dt*dt;
   proc_noise_diag(2) = 0.5*max_accel*dt*dt;
@@ -125,7 +180,6 @@ int main(int argc, char **argv)
   proc_noise_diag(4) = max_accel*dt;
   proc_noise_diag(5) = max_accel*dt;
   proc_noise_diag = proc_noise_diag.array().square();
-  KalmanFilter::Measurement_t meas_noise_diag;
   meas_noise_diag(0) = 1e-4;
   meas_noise_diag(1) = 1e-4;
   meas_noise_diag(2) = 1e-4;
@@ -139,6 +193,7 @@ int main(int argc, char **argv)
                                           ros::TransportHints().tcpNoDelay());
 
   odom_pub = n.advertise<nav_msgs::Odometry>("odom", 10);
+  consecutive_occlusions = 0;
 
   ros::spin();
 

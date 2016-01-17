@@ -1,0 +1,35 @@
+<launch>
+
+  <arg name="model" default="object"/>
+
+  <node pkg="vicon"
+    type="vicon"
+    name="vicon">
+    <param name="vicon_server" value="192.168.10.1"/>
+    <param name="calib_files_dir" value="$(find vicon)/calib"/>
+  </node>
+
+ <node pkg="vicon_odom"
+        type="vicon_odom"
+        name="vicon_odom"
+        output="screen">
+    <remap from="~vicon" to="/vicon/$(arg model)"/>
+    <remap from="~odom" to="/$(arg model)/odom"/>
+    <param name="frame_id/fixed" value="vicon"/>
+    <param name="frame_id/base" value="$(arg model)/base"/>
+    <param name="vicon_kf/min_visible_markers" value="4"/>
+    <param name="vicon_kf/min_consecutive_occlusions_for_restart" value="5"/>
+  </node>
+
+  <arg name="bagfile_record" default="$(arg model)_quality"/>
+  <arg name="record_path" default="$(env HOME)/bagfiles/"/>
+  <node pkg="rosbag"
+    type="record"
+    name="record"
+    output="screen"
+    args="-O $(arg record_path)$(arg bagfile_record)
+    /vicon/$(arg model)
+    /$(arg model)/odom
+    "/>
+
+</launch>
