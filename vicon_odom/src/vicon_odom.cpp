@@ -16,7 +16,11 @@ static std::string base_frame_id;
 static KalmanFilter::State_t proc_noise_diag;
 static KalmanFilter::Measurement_t meas_noise_diag;
 static unsigned int consecutive_occlusions;
+
+// the minimum number of consecutive time steps at which less than 3 markers are visible before the KF can be re-initialized
 static unsigned int min_consec_occ;
+
+// the minimum number of markers that must be visible for vicon attitude to be published
 static unsigned int min_visible_markers;
 
 static void vicon_callback(const vicon::Subject::ConstPtr &msg)
@@ -34,9 +38,9 @@ static void vicon_callback(const vicon::Subject::ConstPtr &msg)
       num_visible_markers++;
   }
 
-  if (num_visible_markers < min_visible_markers)
+  if (num_visible_markers < 3)
   {
-    //ROS_WARN("vicon_odom: less than 4 visible markers, skipping KF update");
+    //ROS_WARN("vicon_odom: less than 3 visible markers, skipping KF update");
     consecutive_occlusions++;
     return;
   }
@@ -92,38 +96,53 @@ static void vicon_callback(const vicon::Subject::ConstPtr &msg)
     }
   }
 
-  odom_msg.pose.pose.orientation.x = msg->orientation.x;
-  odom_msg.pose.pose.orientation.y = msg->orientation.y;
-  odom_msg.pose.pose.orientation.z = msg->orientation.z;
-  odom_msg.pose.pose.orientation.w = msg->orientation.w;
-
-  // Single step differentitation for angular velocity
-  static Eigen::Matrix3d R_prev(Eigen::Matrix3d::Identity());
-  Eigen::Matrix3d R(Eigen::Quaterniond(msg->orientation.w, msg->orientation.x, msg->orientation.y, msg->orientation.z));
-  if(dt > 1e-6)
+  if (num_visible_markers >= min_visible_markers)
   {
-    Eigen::Matrix3d R_dot = (R - R_prev)/dt;
-    Eigen::Matrix3d w_hat = R_dot * R.transpose();
+    odom_msg.pose.pose.orientation.x = msg->orientation.x;
+    odom_msg.pose.pose.orientation.y = msg->orientation.y;
+    odom_msg.pose.pose.orientation.z = msg->orientation.z;
+    odom_msg.pose.pose.orientation.w = msg->orientation.w;
 
-    odom_msg.twist.twist.angular.x = w_hat(2, 1);
-    odom_msg.twist.twist.angular.y = w_hat(0, 2);
-    odom_msg.twist.twist.angular.z = w_hat(1, 0);
+    // Single step differentitation for angular velocity
+    static Eigen::Matrix3d R_prev(Eigen::Matrix3d::Identity());
+    Eigen::Matrix3d R(Eigen::Quaterniond(msg->orientation.w, msg->orientation.x, msg->orientation.y, msg->orientation.z));
+    if(dt > 1e-6)
+    {
+      Eigen::Matrix3d R_dot = (R - R_prev)/dt;
+      Eigen::Matrix3d w_hat = R_dot * R.transpose();
+
+      odom_msg.twist.twist.angular.x = w_hat(2, 1);
+      odom_msg.twist.twist.angular.y = w_hat(0, 2);
+      odom_msg.twist.twist.angular.z = w_hat(1, 0);
+    }
+    R_prev = R;
+
+    geometry_msgs::TransformStamped ts;
+    ts.transform.translation.x = odom_msg.pose.pose.position.x;
+    ts.transform.translation.y = odom_msg.pose.pose.position.y;
+    ts.transform.translation.z = odom_msg.pose.pose.position.z;
+    ts.transform.rotation.x = odom_msg.pose.pose.orientation.x;
+    ts.transform.rotation.y = odom_msg.pose.pose.orientation.y;
+    ts.transform.rotation.z = odom_msg.pose.pose.orientation.z;
+    ts.transform.rotation.w = odom_msg.pose.pose.orientation.w;
+    ts.header = odom_msg.header;
+    ts.child_frame_id = odom_msg.child_frame_id;
+    tfb->sendTransform(ts);
   }
-  R_prev = R;
+  else
+  {
+    // use invalid quaternion to indicate that attitude is unreliable
+    odom_msg.pose.pose.orientation.x = 0.0;
+    odom_msg.pose.pose.orientation.y = 0.0;
+    odom_msg.pose.pose.orientation.z = 0.0;
+    odom_msg.pose.pose.orientation.w = 0.0;
+
+    odom_msg.twist.twist.angular.x = 0.0;
+    odom_msg.twist.twist.angular.y = 0.0;
+    odom_msg.twist.twist.angular.z = 0.0;
+  }
 
   odom_pub.publish(odom_msg);
-
-  geometry_msgs::TransformStamped ts;
-  ts.transform.translation.x = odom_msg.pose.pose.position.x;
-  ts.transform.translation.y = odom_msg.pose.pose.position.y;
-  ts.transform.translation.z = odom_msg.pose.pose.position.z;
-  ts.transform.rotation.x = odom_msg.pose.pose.orientation.x;
-  ts.transform.rotation.y = odom_msg.pose.pose.orientation.y;
-  ts.transform.rotation.z = odom_msg.pose.pose.orientation.z;
-  ts.transform.rotation.w = odom_msg.pose.pose.orientation.w;
-  ts.header = odom_msg.header;
-  ts.child_frame_id = odom_msg.child_frame_id;
-  tfb->sendTransform(ts);
 }
 
 int main(int argc, char **argv)
@@ -164,6 +183,12 @@ int main(int argc, char **argv)
   }
   n.getParam("vicon_kf/min_visible_markers", tmp);
   min_visible_markers = static_cast<unsigned int>(tmp);
+
+  if (min_visible_markers < 4)
+  {
+    ROS_ERROR("vicon_odom: 'vicon_kf/min_visible_markers' must be at least 4");
+    return EXIT_FAILURE;
+  }
 
   double max_accel;
   n.param("max_accel", max_accel, 5.0);
