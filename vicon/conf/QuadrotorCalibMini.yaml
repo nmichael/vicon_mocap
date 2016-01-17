@@ -1,0 +1,15 @@
+markers:
+- name: M1
+  position: [-0.2223,0.0178,-0.0285]
+- name: M2
+  position: [-0.2032,-0.0686,-0.0285]
+- name: M3
+  position: [0.0483,0.1841,-0.0285]
+- name: M4
+  position: [0.2007,0.1829,-0.0285]
+- name: M5
+  position: [0.0737,-0.1867,-0.0285]
+- name: M6
+  position: [0.0930,-0.1118,-0.0285]
+- name: M7
+  position: [0.2032,-0.1994,-0.0285]
