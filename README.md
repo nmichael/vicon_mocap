@@ -23,6 +23,14 @@ wstool set -t src vicon_mocap https://github.com/nmichael/vicon_mocap.git --git 
 wstool update -t src vicon_mocap
 catkin_make_isolated --install --pkg vicon_mocap
 ```
+### Moving files
+You will need to copy the calib, conf, and launch folders to the vicon folder in install_isolated/share.
+```sh
+cd /path/to/dry
+cp -r src/vicon_mocap/vicon/calib/ install_isolated/share/vicon/.
+cp -r src/vicon_mocap/vicon/conf/ install_isolated/share/vicon/.
+cp -r src/vicon_mocap/vicon/launch install_isolated/share/vicon/.
+```
 
 ### Example usage
 
