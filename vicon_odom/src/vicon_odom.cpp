@@ -1,13 +1,16 @@
 #include <ros/ros.h>
 #include <nav_msgs/Odometry.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <vicon/Subject.h>
 #include <vicon_odom/filter.h>
 #include <Eigen/Geometry>
 #include <tf2_ros/transform_broadcaster.h>
 
 static ros::Publisher odom_pub;
+static ros::Publisher pose_pub;
 static KalmanFilter kf;
 static nav_msgs::Odometry odom_msg;
+static geometry_msgs::PoseStamped pose_msg;
 static tf2_ros::TransformBroadcaster* tfb;
 
 static std::string fixed_frame_id;
@@ -87,6 +90,7 @@ static void vicon_callback(const vicon::Subject::ConstPtr &msg)
   odom_msg.twist.twist.linear.x = state(3);
   odom_msg.twist.twist.linear.y = state(4);
   odom_msg.twist.twist.linear.z = state(5);
+
   for(int i = 0; i < 3; i++)
   {
     for(int j = 0; j < 3; j++)
@@ -95,6 +99,11 @@ static void vicon_callback(const vicon::Subject::ConstPtr &msg)
       odom_msg.twist.covariance[6*i+j] = proc_noise(3+i, 3+j);
     }
   }
+
+  pose_msg.header = odom_msg.header;
+  pose_msg.pose.position = odom_msg.pose.pose.position;
+  pose_msg.pose.orientation = msg->orientation;
+  pose_pub.publish(pose_msg);
 
   if (num_visible_markers >= min_visible_markers)
   {
@@ -218,6 +227,8 @@ int main(int argc, char **argv)
                                           ros::TransportHints().tcpNoDelay());
 
   odom_pub = n.advertise<nav_msgs::Odometry>("odom", 10);
+  pose_pub = n.advertise<geometry_msgs::PoseStamped>("pose", 10);
+
   consecutive_occlusions = 0;
 
   ros::spin();
