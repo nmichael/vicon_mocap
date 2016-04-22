@@ -53,6 +53,7 @@ link_directories(
 
 add_executable(vicon src/vicon.cpp)
 add_dependencies(vicon vicon_driver)
+add_dependencies(vicon ${PROJECT_NAME} ${PROJECT_NAME}_gencpp)
 
 target_link_libraries(vicon
   vicon_driver
@@ -63,6 +64,8 @@ target_link_libraries(vicon
 
 add_executable(vicon_calibrate src/vicon_calibrate.cpp)
 add_dependencies(vicon_calibrate libvicon_driver)
+add_dependencies(vicon_calibrate ${PROJECT_NAME} ${PROJECT_NAME}_gencpp)
+
 target_link_libraries(vicon_calibrate
   vicon_driver
   ${catkin_LIBRARIES}

@@ -33,8 +33,6 @@ add_executable(vicon_odom
 
 add_dependencies(vicon_odom vicon_generate_messages_cpp)
 
-add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_gencpp)
-
 target_link_libraries(vicon_odom
   ${catkin_LIBRARIES}
 )
