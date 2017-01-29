@@ -3,6 +3,7 @@
 
 #include <ros/ros.h>
 #include <nav_msgs/Odometry.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <vicon/Subject.h>
 #include <vicon_odom/filter.h>
@@ -11,9 +12,11 @@
 
 static ros::Publisher odom_pub;
 static ros::Publisher pose_pub;
+static ros::Publisher mavros_pose_pub;
 static KalmanFilter kf;
 static nav_msgs::Odometry odom_msg;
 static geometry_msgs::PoseWithCovarianceStamped pose_msg;
+static geometry_msgs::PoseStamped mavros_pose_msg;
 static tf2_ros::TransformBroadcaster* tfb;
 
 static std::string fixed_frame_id;
@@ -169,6 +172,11 @@ static void vicon_callback(const vicon::Subject::ConstPtr &msg)
 
   pose_pub.publish(pose_msg);
 
+  // HAX for mavros.
+  mavros_pose_msg.header = pose_msg.header;
+  mavros_pose_msg.pose = pose_msg.pose.pose;
+  mavros_pose_pub.publish(mavros_pose_msg);
+
   if (num_visible_markers >= min_visible_markers)
   {
     odom_msg.pose.pose.orientation.x = msg->orientation.x;
@@ -318,6 +326,8 @@ int main(int argc, char **argv)
 
   odom_pub = n.advertise<nav_msgs::Odometry>("odom", 10);
   pose_pub = n.advertise<geometry_msgs::PoseWithCovarianceStamped>("pose", 10);
+  // Mavros needs a PoseStamped message.
+  mavros_pose_pub = n.advertise<geometry_msgs::PoseStamped>("pose_for_mavros", 10);
 
   consecutive_occlusions = 0;
 
