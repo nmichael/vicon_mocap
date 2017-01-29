@@ -1,6 +1,9 @@
+#include <chrono>
+#include <random>
+
 #include <ros/ros.h>
 #include <nav_msgs/Odometry.h>
-#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <vicon/Subject.h>
 #include <vicon_odom/filter.h>
 #include <Eigen/Geometry>
@@ -10,7 +13,7 @@ static ros::Publisher odom_pub;
 static ros::Publisher pose_pub;
 static KalmanFilter kf;
 static nav_msgs::Odometry odom_msg;
-static geometry_msgs::PoseStamped pose_msg;
+static geometry_msgs::PoseWithCovarianceStamped pose_msg;
 static tf2_ros::TransformBroadcaster* tfb;
 
 static std::string fixed_frame_id;
@@ -25,6 +28,29 @@ static unsigned int min_consec_occ;
 
 // the minimum number of markers that must be visible for vicon attitude to be published
 static unsigned int min_visible_markers;
+
+// Variance of the noise added to the position pose message.
+static float pos_injected_noise_stddev = 0.0;
+// Variance of the extra noise added to the position pose message in between
+// the given bounds.
+static float pos_injected_extra_noise_stddev = 0.0;
+static float high_noise_x_min = -FLT_MAX;
+static float high_noise_y_min = -FLT_MAX;
+static float high_noise_z_min = -FLT_MAX;
+static float high_noise_x_max = FLT_MAX;
+static float high_noise_y_max = FLT_MAX;
+static float high_noise_z_max = FLT_MAX;
+static bool apply_position_noise = false;
+static bool apply_extra_position_noise = false;
+
+std::default_random_engine *generator;
+std::normal_distribution<float> *normal_dist;
+
+#define OPTIONAL_GET(param) \
+  if (n.hasParam(#param)) \
+  { \
+    n.getParam(#param, param); \
+  }
 
 static void vicon_callback(const vicon::Subject::ConstPtr &msg)
 {
@@ -101,8 +127,46 @@ static void vicon_callback(const vicon::Subject::ConstPtr &msg)
   }
 
   pose_msg.header = odom_msg.header;
-  pose_msg.pose.position = odom_msg.pose.pose.position;
-  pose_msg.pose.orientation = msg->orientation;
+  pose_msg.pose.pose.position = odom_msg.pose.pose.position;
+  pose_msg.pose.pose.orientation = msg->orientation;
+
+  // This should be the variance of the noise present in the raw vicon data.
+  float variance = 0.01 * 0.01;
+
+  if (apply_position_noise) {
+    pose_msg.pose.pose.position.x += pos_injected_noise_stddev *
+                                     normal_dist->operator()(*generator);
+    pose_msg.pose.pose.position.y += pos_injected_noise_stddev *
+                                     normal_dist->operator()(*generator);
+    pose_msg.pose.pose.position.z += pos_injected_noise_stddev *
+                                     normal_dist->operator()(*generator);
+    variance += std::pow(pos_injected_noise_stddev, 2);
+  }
+
+  if (apply_extra_position_noise)
+  {
+    if (high_noise_x_min < odom_msg.pose.pose.position.x && 
+        odom_msg.pose.pose.position.x < high_noise_x_max &&
+        high_noise_y_min < odom_msg.pose.pose.position.y && 
+        odom_msg.pose.pose.position.y < high_noise_y_max &&
+        high_noise_z_min < odom_msg.pose.pose.position.z && 
+        odom_msg.pose.pose.position.z < high_noise_z_max)
+    {
+      pose_msg.pose.pose.position.x += pos_injected_extra_noise_stddev *
+                                       normal_dist->operator()(*generator);
+      pose_msg.pose.pose.position.y += pos_injected_extra_noise_stddev *
+                                       normal_dist->operator()(*generator);
+      pose_msg.pose.pose.position.z += pos_injected_extra_noise_stddev *
+                                       normal_dist->operator()(*generator);
+      variance += std::pow(pos_injected_extra_noise_stddev, 2);
+    }
+  }
+
+  pose_msg.pose.covariance[0] = variance;
+  pose_msg.pose.covariance[7] = variance;
+  pose_msg.pose.covariance[14] = variance;
+  pose_msg.pose.covariance[35] = 0.02 * 0.02;
+
   pose_pub.publish(pose_msg);
 
   if (num_visible_markers >= min_visible_markers)
@@ -112,7 +176,7 @@ static void vicon_callback(const vicon::Subject::ConstPtr &msg)
     odom_msg.pose.pose.orientation.z = msg->orientation.z;
     odom_msg.pose.pose.orientation.w = msg->orientation.w;
 
-    // Single step differentitation for angular velocity
+    // Single step differentiatation for angular velocity
     static Eigen::Matrix3d R_prev(Eigen::Matrix3d::Identity());
     Eigen::Matrix3d R(Eigen::Quaterniond(msg->orientation.w, msg->orientation.x, msg->orientation.y, msg->orientation.z));
     if(dt > 1e-6)
@@ -193,6 +257,32 @@ int main(int argc, char **argv)
   n.getParam("vicon_kf/min_visible_markers", tmp);
   min_visible_markers = static_cast<unsigned int>(tmp);
 
+  if (n.hasParam("pos_injected_noise_stddev"))
+  {
+    apply_position_noise = true;
+    n.getParam("pos_injected_noise_stddev", pos_injected_noise_stddev);
+  }
+
+  if (n.hasParam("pos_injected_extra_noise_stddev"))
+  {
+    apply_extra_position_noise = true;
+    n.getParam("pos_injected_extra_noise_stddev", pos_injected_extra_noise_stddev);
+    OPTIONAL_GET(high_noise_x_min)
+    OPTIONAL_GET(high_noise_y_min)
+    OPTIONAL_GET(high_noise_z_min)
+    OPTIONAL_GET(high_noise_x_max)
+    OPTIONAL_GET(high_noise_y_max)
+    OPTIONAL_GET(high_noise_z_max)
+  }
+
+  unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+  std::default_random_engine gen(seed);
+  std::normal_distribution<float> std_normal(0.0, 1.0);
+
+  // There has to be a better way to do this...
+  generator = &gen;
+  normal_dist = &std_normal;
+
   if (min_visible_markers < 4)
   {
     ROS_ERROR("vicon_odom: 'vicon_kf/min_visible_markers' must be at least 4");
@@ -227,7 +317,7 @@ int main(int argc, char **argv)
                                           ros::TransportHints().tcpNoDelay());
 
   odom_pub = n.advertise<nav_msgs::Odometry>("odom", 10);
-  pose_pub = n.advertise<geometry_msgs::PoseStamped>("pose", 10);
+  pose_pub = n.advertise<geometry_msgs::PoseWithCovarianceStamped>("pose", 10);
 
   consecutive_occlusions = 0;
 
