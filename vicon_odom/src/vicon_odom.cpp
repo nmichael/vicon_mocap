@@ -55,12 +55,22 @@ std::normal_distribution<float> *normal_dist;
     n.getParam(#param, param); \
   }
 
+std::chrono::high_resolution_clock::time_point last_time;
+float desired_dt; // in seconds.
+
 static void vicon_callback(const vicon::Subject::ConstPtr &msg)
 {
   static ros::Time t_last_proc = msg->header.stamp;
 
   double dt = (msg->header.stamp - t_last_proc).toSec();
   t_last_proc = msg->header.stamp;
+
+  auto time_now = std::chrono::high_resolution_clock::now();
+  auto dur = std::chrono::duration_cast<std::chrono::microseconds>(time_now - last_time).count();
+  if (dur > 1.5 * 1e6 * desired_dt) {
+    ROS_WARN("vicon_odom callback dt: %f ms", dur / 1000.0);
+  }
+  last_time = time_now;
 
   unsigned int num_visible_markers = 0;
   unsigned int total_num_markers = msg->markers.size();
@@ -304,6 +314,7 @@ int main(int argc, char **argv)
   n.param("vicon_fps", vicon_fps, 100.0);
   ROS_ASSERT(vicon_fps > 0.0);
   dt = 1/vicon_fps;
+  desired_dt = dt;
 
   proc_noise_diag(0) = 0.5*max_accel*dt*dt;
   proc_noise_diag(1) = 0.5*max_accel*dt*dt;
