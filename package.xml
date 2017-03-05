@@ -1,10 +1,11 @@
 <?xml version="1.0"?>
 <package>
   <name>vicon_mocap</name>
-  <version>0.0.0</version>
+  <version>0.0.1</version>
   <description>The vicon_mocap metapackage</description>
 
   <maintainer email="email@todo.com">Kartik Mohta</maintainer>
+  <maintainer email="email@todo.com">John Yao</maintainer>
   <license>BSD</license>
 
   <buildtool_depend>catkin</buildtool_depend>
