@@ -7,11 +7,7 @@ find_package(Eigen3 REQUIRED)
 set(CMAKE_SKIP_BUILD_RPATH FALSE)
 set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
 
-include_directories(
-  include
-  ${EIGEN3_INCLUDE_DIR}
-)
-add_definitions("-Wall -Wextra -O2 -fPIC")
+find_package(catkin REQUIRED)
 
 if(APPLE)
   # Default to use the new YAML-CPP API
@@ -37,6 +33,19 @@ if(USE_OLD_YAML_CPP_API)
   message(STATUS "${PROJECT_NAME}: Using old YAML-CPP API")
   add_definitions( -DUSE_OLD_YAML_CPP_API )
 endif(USE_OLD_YAML_CPP_API)
+
+catkin_package(
+  # Below is horrible hack for vicon to find the boost libs needed for the ViconSDK
+  INCLUDE_DIRS include ${VICON_SDK_DIR}
+  LIBRARIES vicon_driver
+)
+
+include_directories(
+  include
+  ${EIGEN3_INCLUDE_DIR}
+)
+add_definitions("-Wall -Wextra -O2 -fPIC")
+
 
 include_directories(${VICON_SDK_DIR})
 link_directories(${VICON_SDK_DIR})

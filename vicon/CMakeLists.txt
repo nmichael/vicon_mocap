@@ -3,7 +3,6 @@ project(vicon)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../cmake")
 find_package(Eigen3 REQUIRED)
-find_package(Boost REQUIRED COMPONENTS system thread)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
@@ -11,9 +10,8 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   nav_msgs
   std_srvs
+  vicon_driver
 )
-
-set(LIBVICON_DIR "${CMAKE_CURRENT_LIST_DIR}/../libvicon_driver/")
 
 add_message_files(
   FILES
@@ -35,20 +33,22 @@ generate_messages(
 )
 
 catkin_package(
-  INCLUDE_DIRS include "${LIBVICON_DIR}/include"
-  CATKIN_DEPENDS message_runtime roscpp geometry_msgs nav_msgs std_srvs
+  INCLUDE_DIRS include
+  CATKIN_DEPENDS message_runtime roscpp geometry_msgs nav_msgs std_srvs vicon_driver
   DEPENDS Eigen3 Boost
 )
 
 include_directories(
-  "${LIBVICON_DIR}/include"
   ${EIGEN3_INCLUDE_DIR}
   ${catkin_INCLUDE_DIRS}
   ${BOOST_INCLUDE_DIRS}
 )
+
 link_directories(
   ${catkin_LIBRARY_DIRS}
   ${BOOST_LIBRARY_DIRS}
+  # Below is horrible hack to find the boost libs needed for the ViconSDK
+  ${catkin_INCLUDE_DIRS}
 )
 
 add_executable(vicon src/vicon.cpp)
@@ -63,7 +63,7 @@ target_link_libraries(vicon
 )
 
 add_executable(vicon_calibrate src/vicon_calibrate.cpp)
-add_dependencies(vicon_calibrate libvicon_driver)
+add_dependencies(vicon_calibrate vicon_driver)
 add_dependencies(vicon_calibrate ${PROJECT_NAME} ${PROJECT_NAME}_gencpp)
 
 target_link_libraries(vicon_calibrate
