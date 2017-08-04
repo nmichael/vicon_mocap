@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>vicon_driver</name>
-  <version>0.0.0</version>
+  <version>0.0.2</version>
   <description>The vicon_driver package</description>
 
   <maintainer email="nobody@todo.com">No Body</maintainer>

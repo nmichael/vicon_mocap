@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>vicon_odom</name>
-  <version>0.0.0</version>
+  <version>0.0.2</version>
   <description>The vicon_odom package</description>
 
   <maintainer email="email@todo.com">Kartik Mohta</maintainer>
