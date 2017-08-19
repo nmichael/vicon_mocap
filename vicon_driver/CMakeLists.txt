@@ -67,13 +67,13 @@ target_link_libraries(vicon_driver
 
 install(TARGETS vicon_driver DESTINATION lib)
 install(FILES "${VICON_SDK_DIR}/libViconDataStreamSDK_CPP${SO_EXT}" DESTINATION lib)
-install(FILES "${VICON_SDK_DIR}/libboost_chrono-mt.so.1.51.0" DESTINATION lib)
-install(FILES "${VICON_SDK_DIR}/libboost_system-mt.so.1.51.0" DESTINATION lib)
-install(FILES "${VICON_SDK_DIR}/libboost_thread-mt.so.1.51.0" DESTINATION lib)
+install(FILES "${VICON_SDK_DIR}/libDebugServices${SO_EXT}" DESTINATION lib)
 
-if(APPLE)
-  install(FILES "${VICON_SDK_DIR}/libDebugServices${SO_EXT}" DESTINATION lib)
-endif(APPLE)
+if(NOT APPLE)
+  install(FILES "${VICON_SDK_DIR}/libboost_chrono-mt.so.1.51.0" DESTINATION lib)
+  install(FILES "${VICON_SDK_DIR}/libboost_system-mt.so.1.51.0" DESTINATION lib)
+  install(FILES "${VICON_SDK_DIR}/libboost_thread-mt.so.1.51.0" DESTINATION lib)
+endif()
 
 install(DIRECTORY include/
   DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION}
